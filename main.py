@@ -6,6 +6,10 @@ import customtkinter as ctk
 from customtkinter import CTkImage
 from datetime import datetime
 from PIL import Image, ImageTk
+import tkinter as tk
+import platform
+import subprocess
+import io
 import os
 from crud import agregar_plato, obtener_platos, actualizar_plato, eliminar_plato, existe_plato
 from validaciones import validar_dinero
@@ -282,12 +286,6 @@ class RestauranteApp:
         Muestra una vista previa del PDF dentro de la misma ventana de la aplicación.
         Usa PyMuPDF (fitz) en lugar de pdf2image - NO requiere Poppler.
         """
-        import tkinter as tk
-        import customtkinter as ctk
-        from PIL import Image, ImageTk
-        import platform
-        import subprocess
-        import io
         
         try:
             import fitz  # PyMuPDF
@@ -545,7 +543,7 @@ class RestauranteApp:
                 elif sistema == 'Linux':
                     # ===== IMPRESIÓN EN LINUX CON LPR =====
                     try:
-                        subprocess.run(['lpr', pdf_path], check=True)
+                        subprocess.run(['lp', pdf_path], check=True)
                         messagebox.showinfo(
                             "✓ Enviado a impresora", 
                             "Documento enviado a la impresora predeterminada."

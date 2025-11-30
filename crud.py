@@ -1,59 +1,51 @@
 from database import conectar
 
 # ===============================================
-# CRUD para CATEGORÍAS
-# ===============================================
-
-def obtener_categorias():
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute("SELECT id, nombre FROM categorias")
-    categorias = cur.fetchall()
-    conn.close()
-    return categorias
-
-# ===============================================
 # CRUD para PLATOS
 # ===============================================
 
-def agregar_plato(nombre, descripcion, precio, categoria_id, imagen):
+def agregar_plato(nombre, precio, imagen, fecha_creacion):
     conn = conectar()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO platos (nombre, descripcion, precio, id_categoria, ruta_imagen)
-        VALUES (%s, %s, %s, %s, %s)
-    """, (nombre, descripcion, precio, categoria_id, imagen))
+        INSERT INTO platos (nombre, precio, imagen, fecha_creacion)
+        VALUES (%s, %s, %s, %s)
+    """, (nombre, precio, imagen, fecha_creacion))
     conn.commit()
     conn.close()
+
 
 def obtener_platos():
     conn = conectar()
     cur = conn.cursor()
     cur.execute("""
         SELECT 
-            p.id,
-            p.nombre,
-            p.descripcion,
-            p.precio,
-            c.nombre AS categoria,
-            p.ruta_imagen
-        FROM platos p
-        LEFT JOIN categorias c ON p.id_categoria = c.id
+            id,
+            nombre,
+            precio,
+            imagen,
+            fecha_creacion
+        FROM platos
+        ORDER BY id ASC
     """)
     platos = cur.fetchall()
     conn.close()
     return platos
 
-def actualizar_plato(id_, nombre, descripcion, precio, categoria_id, imagen):
+
+def actualizar_plato(id_, nombre, precio, imagen):
     conn = conectar()
     cur = conn.cursor()
     cur.execute("""
         UPDATE platos
-        SET nombre = %s, descripcion = %s, precio = %s, id_categoria = %s, ruta_imagen = %s
+        SET nombre = %s,
+            precio = %s,
+            imagen = %s
         WHERE id = %s
-    """, (nombre, descripcion, precio, categoria_id, imagen, id_))
+    """, (nombre, precio, imagen, id_))
     conn.commit()
     conn.close()
+
 
 def eliminar_plato(id_):
     conn = conectar()
@@ -61,6 +53,7 @@ def eliminar_plato(id_):
     cur.execute("DELETE FROM platos WHERE id = %s", (id_,))
     conn.commit()
     conn.close()
+
 
 def existe_plato(nombre):
     conn = conectar()

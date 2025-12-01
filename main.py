@@ -814,7 +814,7 @@ class RestauranteApp:
     def seleccionar_imagen(self):
         path_origen = filedialog.askopenfilename(
             initialdir="img/platos", 
-            filetypes=[("Imágenes", "*.png;*.jpg;*.jpeg")]
+            filetypes=[("Imágenes", "*.png *.jpg *.jpeg")]
         )
         
         if path_origen:

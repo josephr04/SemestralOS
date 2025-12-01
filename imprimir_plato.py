@@ -163,4 +163,10 @@ def generar_pdf_plato(datos_plato, ruta_imagen=None):
     # Construir PDF
     doc.build(elementos)
     
+    # IMPORTANTE: Asegurar permisos de lectura en Linux
+    try:
+        os.chmod(pdf_path, 0o644)
+    except:
+        pass  # Si falla, no es crítico
+    
     return pdf_path

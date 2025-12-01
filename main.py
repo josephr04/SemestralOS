@@ -19,7 +19,8 @@ COLOR_ACCENT = "#FF6B6B"
 COLOR_BTN = "#4ECDC4"
 COLOR_IMP = "#2d3741"
 COLOR_TXT = "#333"
-FUENTE_TXT = "Inter" 
+FUENTE_TXT = "Inter"
+IMPRESORA_DEFAULT = "Canon_TS3100_series_USB"  # Puedes configurar una impresora por defecto aquí en caso de no detectarla
 
 class RestauranteApp:
     def __init__(self, root):
@@ -434,152 +435,233 @@ class RestauranteApp:
         botones_container.pack(expand=True)
 
         def imprimir_directo():
-            """Imprime el PDF directamente usando win32print en Windows"""
-            import platform
-            import subprocess
-            import tempfile
-            import time
-            
-            sistema = platform.system()
-            
-            try:
-                if sistema == 'Windows':
-                    # ===== IMPRESIÓN DIRECTA EN WINDOWS CON WIN32PRINT =====
-                    try:
-                        import win32print
-                        import win32ui
-                        from PIL import Image as PILImage, ImageWin
-                        import fitz  # PyMuPDF
-                        
-                        # Obtener impresora predeterminada
-                        printer_name = win32print.GetDefaultPrinter()
-                        
-                        # Crear contexto de impresión
-                        hDC = win32ui.CreateDC()
-                        hDC.CreatePrinterDC(printer_name)
-                        hDC.StartDoc(f"Plato - {datos_plato[1]}")
-                        hDC.StartPage()
-                        
-                        # Convertir PDF a imagen de alta resolución
-                        pdf_doc = fitz.open(pdf_path)
-                        pagina = pdf_doc[0]  # Primera página
-                        
-                        # Renderizar con alta resolución (300 DPI)
-                        zoom = 3  # zoom 3 = aproximadamente 300 DPI
-                        mat = fitz.Matrix(zoom, zoom)
-                        pix = pagina.get_pixmap(matrix=mat)
-                        
-                        # Guardar temporalmente como PNG
-                        temp_img_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-                        temp_img_path = temp_img_file.name
-                        temp_img_file.close()
-                        
-                        pix.save(temp_img_path)
-                        
-                        # Abrir imagen con PIL
-                        bmp = PILImage.open(temp_img_path)
-                        dib = ImageWin.Dib(bmp)
-                        
-                        # Obtener dimensiones de la impresora
-                        printer_width = hDC.GetDeviceCaps(110)   # HORZRES
-                        printer_height = hDC.GetDeviceCaps(111)  # VERTRES
-                        
-                        # Calcular escala para ajustar a la página
-                        scale = min(
-                            printer_width / bmp.size[0], 
-                            printer_height / bmp.size[1]
-                        )
-                        new_width = int(bmp.size[0] * scale)
-                        new_height = int(bmp.size[1] * scale)
-                        
-                        # Centrar en la página
-                        x = (printer_width - new_width) // 2
-                        y = (printer_height - new_height) // 2
-                        
-                        # Dibujar/Imprimir la imagen
-                        dib.draw(hDC.GetHandleOutput(), 
-                                (x, y, x + new_width, y + new_height))
-                        
-                        # Finalizar impresión
-                        hDC.EndPage()
-                        hDC.EndDoc()
-                        hDC.DeleteDC()
-                        
-                        # IMPORTANTE: Cerrar y liberar recursos ANTES de eliminar
-                        pdf_doc.close()
-                        del bmp  # Liberar imagen de PIL
-                        del dib  # Liberar DIB de Windows
-                        
-                        # Esperar un momento para asegurar que se liberó el archivo
-                        time.sleep(0.1)
-                        
-                        # Intentar eliminar el archivo temporal
-                        try:
-                            os.unlink(temp_img_path)
-                        except PermissionError:
-                            # Si no se puede eliminar, programar para eliminar después
-                            import atexit
-                            atexit.register(lambda: os.unlink(temp_img_path) if os.path.exists(temp_img_path) else None)
-                        
-                    except ImportError as ie:
-                        # Si falta alguna biblioteca
-                        messagebox.showerror(
-                            "Biblioteca faltante",
-                            f"Falta instalar una biblioteca:\n\n{str(ie)}\n\n"
-                            "Instala con:\npip install pywin32 PyMuPDF\n\n"
-                            "Se abrirá el PDF en tu visor."
-                        )
-                        abrir_en_visor()
-                        
-                    except Exception as e:
-                        # Cualquier otro error en Windows
-                        messagebox.showerror(
-                            "Error de impresión",
-                            f"No se pudo imprimir directamente:\n{str(e)}\n\n"
-                            "Se abrirá el PDF para que imprimas manualmente."
-                        )
-                        abrir_en_visor()
-                        
-                elif sistema == 'Linux':
-                    # ===== IMPRESIÓN EN LINUX CON LPR =====
-                    try:
-                        subprocess.run(['lp', pdf_path], check=True)
-                        messagebox.showinfo(
-                            "✓ Enviado a impresora", 
-                            "Documento enviado a la impresora predeterminada."
-                        )
-                    except FileNotFoundError:
-                        messagebox.showerror(
-                            "Comando no encontrado",
-                            "No se encontró el comando 'lpr'.\n"
-                            "Se abrirá el PDF para imprimir manualmente."
-                        )
-                        abrir_en_visor()
-                    except subprocess.CalledProcessError as e:
-                        messagebox.showerror(
-                            "Error de impresión",
-                            f"Error al enviar a impresora:\n{str(e)}\n\n"
-                            "Se abrirá el PDF para imprimir manualmente."
-                        )
-                        abrir_en_visor()
-                        
-                else:
-                    # macOS u otros sistemas
-                    messagebox.showinfo(
-                        "Imprimir manualmente",
-                        "Tu sistema operativo requiere impresión manual.\n"
-                        "Se abrirá el PDF en tu visor."
-                    )
-                    abrir_en_visor()
+                    """Imprime el PDF directamente según el sistema operativo"""
+                    import platform
+                    import subprocess
+                    import tempfile
+                    import time
+                    import os
+                    import shutil
                     
-            except Exception as e:
-                # Error general
-                messagebox.showerror(
-                    "Error inesperado",
-                    f"Ocurrió un error:\n{str(e)}\n\n"
-                    "Usa el botón 'Abrir en Visor' para imprimir manualmente."
-                )
-
+                    sistema = platform.system()
+                    
+                    try:
+                        if sistema == 'Windows':
+                            # ===== IMPRESIÓN DIRECTA EN WINDOWS CON WIN32PRINT =====
+                            try:
+                                import win32print
+                                import win32ui
+                                from PIL import Image as PILImage, ImageWin
+                                import fitz  # PyMuPDF
+                                
+                                printer_name = win32print.GetDefaultPrinter()
+                                hDC = win32ui.CreateDC()
+                                hDC.CreatePrinterDC(printer_name)
+                                hDC.StartDoc(f"Plato - {datos_plato[1]}")
+                                hDC.StartPage()
+                                
+                                pdf_doc = fitz.open(pdf_path)
+                                pagina = pdf_doc[0]
+                                
+                                zoom = 3
+                                mat = fitz.Matrix(zoom, zoom)
+                                pix = pagina.get_pixmap(matrix=mat)
+                                
+                                temp_img_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+                                temp_img_path = temp_img_file.name
+                                temp_img_file.close()
+                                
+                                pix.save(temp_img_path)
+                                
+                                bmp = PILImage.open(temp_img_path)
+                                dib = ImageWin.Dib(bmp)
+                                
+                                printer_width = hDC.GetDeviceCaps(110)
+                                printer_height = hDC.GetDeviceCaps(111)
+                                
+                                scale = min(
+                                    printer_width / bmp.size[0], 
+                                    printer_height / bmp.size[1]
+                                )
+                                new_width = int(bmp.size[0] * scale)
+                                new_height = int(bmp.size[1] * scale)
+                                
+                                x = (printer_width - new_width) // 2
+                                y = (printer_height - new_height) // 2
+                                
+                                dib.draw(hDC.GetHandleOutput(), 
+                                        (x, y, x + new_width, y + new_height))
+                                
+                                hDC.EndPage()
+                                hDC.EndDoc()
+                                hDC.DeleteDC()
+                                
+                                pdf_doc.close()
+                                del bmp
+                                del dib
+                                
+                                time.sleep(0.1)
+                                
+                                try:
+                                    os.unlink(temp_img_path)
+                                except PermissionError:
+                                    import atexit
+                                    atexit.register(lambda: os.unlink(temp_img_path) if os.path.exists(temp_img_path) else None)
+                                
+                                messagebox.showinfo(
+                                    "✓ Impresión enviada",
+                                    "Documento enviado a la impresora correctamente."
+                                )
+                                
+                            except ImportError as ie:
+                                messagebox.showerror(
+                                    "Biblioteca faltante",
+                                    f"Falta instalar una biblioteca:\n\n{str(ie)}\n\n"
+                                    "Instala con:\npip install pywin32 PyMuPDF\n\n"
+                                    "Se abrirá el PDF en tu visor."
+                                )
+                                abrir_en_visor()
+                                
+                            except Exception as e:
+                                messagebox.showerror(
+                                    "Error de impresión",
+                                    f"No se pudo imprimir directamente:\n{str(e)}\n\n"
+                                    "Se abrirá el PDF para que imprimas manualmente."
+                                )
+                                abrir_en_visor()
+                                
+                        elif sistema == 'Linux':
+                            # ===== IMPRESIÓN EN LINUX CON CUPS =====
+                            
+                            # Asegurar permisos del archivo
+                            try:
+                                os.chmod(pdf_path, 0o644)
+                            except:
+                                pass
+                            
+                            # Verificar que el archivo existe
+                            if not os.path.exists(pdf_path):
+                                messagebox.showerror(
+                                    "Error",
+                                    f"No se encuentra el archivo PDF:\n{pdf_path}"
+                                )
+                                return
+                            
+                            # Verificar que CUPS está instalado
+                            if not shutil.which('lp'):
+                                messagebox.showerror(
+                                    "CUPS no instalado",
+                                    "No se encontró el comando 'lp'.\n\n"
+                                    "Instala con:\nsudo apt-get install cups\n\n"
+                                    "Se abrirá el PDF."
+                                )
+                                abrir_en_visor()
+                                return
+                            
+                            # Obtener la impresora predeterminada
+                            try:
+                                # Intentar obtener la impresora predeterminada
+                                result = subprocess.run(
+                                    ['lpstat', '-d'],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=5
+                                )
+                                
+                                if result.returncode == 0 and result.stdout:
+                                    # Parsear: "system default destination: Canon_TS3100_series_USB"
+                                    for line in result.stdout.split('\n'):
+                                        if 'destination:' in line or 'default:' in line:
+                                            impresora_default = line.split(':')[-1].strip()
+                                            break
+                                
+                                # Si no hay predeterminada, obtener la primera disponible
+                                if not impresora_default:
+                                    result_list = subprocess.run(
+                                        ['lpstat', '-a'],
+                                        capture_output=True,
+                                        text=True,
+                                        timeout=5
+                                    )
+                                    
+                                    if result_list.returncode == 0 and result_list.stdout:
+                                        primera_linea = result_list.stdout.split('\n')[0]
+                                        if primera_linea:
+                                            impresora_default = primera_linea.split()[0]
+                                
+                                # Si aún no hay impresora, usar la tuya por defecto
+                                if not impresora_default:
+                                    impresora_default = IMPRESORA_DEFAULT                                                 
+                              
+                            except Exception as e:
+                                messagebox.showerror(
+                                    "Error al verificar impresoras",
+                                    f"No se pudo verificar las impresoras:\n{str(e)}\n\n"
+                                    "Se abrirá el PDF."
+                                )
+                                abrir_en_visor()
+                                return
+                            
+                            # IMPRIMIR CON LA IMPRESORA ESPECÍFICA
+                            try:
+                                # Comando que funciona en tu terminal
+                                result = subprocess.run(
+                                    ['lp', '-d', impresora_default, '-o', 'fit-to-page', pdf_path],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=10
+                                )
+                                
+                                if result.returncode == 0:
+                                    job_id = result.stdout.strip()
+                                    messagebox.showinfo(
+                                        "✓ Enviado a impresora",
+                                        f"Documento enviado correctamente.\n\n"
+                                        f"Impresora: {impresora_default}\n"
+                                        f"{job_id}"
+                                    )
+                                else:
+                                    error_msg = result.stderr or "Error desconocido"
+                                    messagebox.showerror(
+                                        "Error de impresión",
+                                        f"No se pudo imprimir:\n\n{error_msg}\n\n"
+                                        "Se abrirá el PDF."
+                                    )
+                                    abrir_en_visor()
+                                    
+                            except subprocess.TimeoutExpired:
+                                messagebox.showerror(
+                                    "Error",
+                                    "El comando de impresión tardó demasiado.\n\n"
+                                    "Se abrirá el PDF."
+                                )
+                                abrir_en_visor()
+                                
+                            except Exception as e:
+                                messagebox.showerror(
+                                    "Error inesperado",
+                                    f"Error al imprimir:\n{str(e)}\n\n"
+                                    "Se abrirá el PDF."
+                                )
+                                abrir_en_visor()
+                                
+                        else:
+                            # macOS u otros sistemas
+                            messagebox.showinfo(
+                                "Imprimir manualmente",
+                                "Tu sistema operativo requiere impresión manual.\n"
+                                "Se abrirá el PDF en tu visor."
+                            )
+                            abrir_en_visor()
+                            
+                    except Exception as e:
+                        # Error general
+                        messagebox.showerror(
+                            "Error inesperado",
+                            f"Ocurrió un error:\n{str(e)}\n\n"
+                            "Usa el botón 'Abrir en Visor' para imprimir manualmente."
+                        )
+                
         def abrir_en_visor():
             """Abre el PDF en el visor externo del sistema"""
             sistema = platform.system()

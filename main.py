@@ -209,6 +209,18 @@ class RestauranteApp:
             height=22,
             cursor="hand2",
             command=self.imprimir).pack(side="left", padx=8) # <- Funcion para imprimir platos!!
+        
+        ctk.CTkButton(btn_frame, 
+            text="🔄 Actualizar",
+            font=(FUENTE_TXT, 13, "bold"),
+            fg_color="#3498db",
+            hover_color="#2980b9",
+            text_color="white",
+            corner_radius=6,
+            width=80,
+            height=22,
+            cursor="hand2",
+            command=self.actualizar_datos).pack(side="left", padx=8)
 
         # ====================================================================
         # TABLA CON ESTILOS PERSONALIZADOS PARA CUSTOMTKINTER
@@ -1016,6 +1028,10 @@ class RestauranteApp:
             
             # Mostrar vista previa de la imagen
             self.mostrar_preview(self.imagen_path.get())
+
+    def actualizar_datos(self):
+        """Recarga los datos desde la base de datos"""
+        self.cargar_tabla()
 
 # --- INICIO APP ---
 if __name__ == "__main__":
